@@ -5,10 +5,10 @@ const useThemeStore = create(
   persist(
     (set) => ({
       isDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
-      toggleTheme: () => set((state) => ({ isDark: !state.isDark })),
+      toggleTheme: () => set((state) => ({ isDark: !state.isDark }))
     }),
     {
-      name: 'theme-storage',
+      name: 'theme-store'
     }
   )
 )

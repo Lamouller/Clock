@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
-import { Button, Card, Select, Text } from '@radix-ui/themes'
-import useAuthStore from '../../stores/authStore'
+import { Button, Card, Select } from '@radix-ui/themes'
 import useThemeStore from '../../stores/themeStore'
+import { supabase } from '../../lib/supabase'
 import { Timer } from './Timer'
-import { formatDuration } from '../../utils/timeUtils'
 
 const SHIFTS = {
   lunch: {
     name: 'Lunch Service',
-    expectedDuration: 4 * 60 * 60, // 4 hours in seconds
-    color: 'amber'
+    defaultStart: '11:00',
+    defaultEnd: '15:00',
+    expectedDuration: 4 * 60 * 60 // 4 hours in seconds
   },
   dinner: {
     name: 'Dinner Service',
-    expectedDuration: 5 * 60 * 60, // 5 hours in seconds
-    color: 'indigo'
+    defaultStart: '18:00',
+    defaultEnd: '23:00',
+    expectedDuration: 5 * 60 * 60 // 5 hours in seconds
   }
 }
 
@@ -23,66 +23,29 @@ export function ClockInOut() {
   const [selectedShift, setSelectedShift] = useState(null)
   const [activeClockIn, setActiveClockIn] = useState(null)
   const [loading, setLoading] = useState(false)
-  const user = useAuthStore((state) => state.user)
   const isDark = useThemeStore((state) => state.isDark)
 
-  // Load active clock-in on mount
+  // Check for active clock-in on mount
   useEffect(() => {
-    const loadActiveClockIn = async () => {
-      const { data: activeLog } = await supabase
-        .from('time_logs')
-        .select('*')
-        .eq('user_id', user?.id)
-        .is('clock_out', null)
-        .single()
-
-      if (activeLog) {
-        setActiveClockIn({
-          id: activeLog.id,
-          startTime: new Date(activeLog.clock_in),
-          shift: activeLog.shift_type
-        })
-      }
+    const storedClockIn = localStorage.getItem('activeClockIn')
+    if (storedClockIn) {
+      setActiveClockIn(JSON.parse(storedClockIn))
     }
-
-    if (user) {
-      loadActiveClockIn()
-    }
-  }, [user])
+  }, [])
 
   const handleClockIn = async () => {
     if (!selectedShift) return
     
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('time_logs')
-        .insert([
-          {
-            user_id: user.id,
-            clock_in: new Date().toISOString(),
-            shift_type: selectedShift,
-            expected_end: new Date(Date.now() + SHIFTS[selectedShift].expectedDuration * 1000).toISOString()
-          }
-        ])
-        .select()
-        .single()
+      const clockInData = {
+        startTime: new Date().toISOString(),
+        shift: selectedShift
+      }
 
-      if (error) throw error
-
-      setActiveClockIn({
-        id: data.id,
-        startTime: new Date(data.clock_in),
-        shift: data.shift_type
-      })
-
-      // Store in localStorage for persistence
-      localStorage.setItem('activeClockIn', JSON.stringify({
-        id: data.id,
-        startTime: data.clock_in,
-        shift: data.shift_type
-      }))
-
+      setActiveClockIn(clockInData)
+      localStorage.setItem('activeClockIn', JSON.stringify(clockInData))
+      setSelectedShift(null)
     } catch (error) {
       console.error('Error clocking in:', error)
     } finally {
@@ -91,23 +54,10 @@ export function ClockInOut() {
   }
 
   const handleClockOut = async () => {
-    if (!activeClockIn) return
-
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('time_logs')
-        .update({
-          clock_out: new Date().toISOString()
-        })
-        .eq('id', activeClockIn.id)
-
-      if (error) throw error
-
-      setActiveClockIn(null)
       localStorage.removeItem('activeClockIn')
-      setSelectedShift(null)
-
+      setActiveClockIn(null)
     } catch (error) {
       console.error('Error clocking out:', error)
     } finally {
@@ -116,7 +66,7 @@ export function ClockInOut() {
   }
 
   return (
-    <div className={`w-full max-w-md ${isDark ? 'text-white' : 'text-black'}`}>
+    <div className={`w-full max-w-md mx-auto ${isDark ? 'text-white' : 'text-black'}`}>
       <Card className={`rounded-2xl p-8 ${isDark ? 'bg-white/10' : 'bg-white'}`}>
         <div className="text-center mb-8">
           <h2 className="text-2xl font-semibold mb-2">Time Clock</h2>
@@ -131,7 +81,7 @@ export function ClockInOut() {
         {activeClockIn ? (
           <div className="space-y-6">
             <Timer 
-              startTime={activeClockIn.startTime}
+              startTime={new Date(activeClockIn.startTime)}
               expectedDuration={SHIFTS[activeClockIn.shift].expectedDuration}
             />
             
@@ -159,10 +109,10 @@ export function ClockInOut() {
                 <Select.Group>
                   <Select.Label>Available Shifts</Select.Label>
                   <Select.Item value="lunch">
-                    Lunch Service (11:00 - 15:00)
+                    Lunch Service ({SHIFTS.lunch.defaultStart} - {SHIFTS.lunch.defaultEnd})
                   </Select.Item>
                   <Select.Item value="dinner">
-                    Dinner Service (18:00 - 23:00)
+                    Dinner Service ({SHIFTS.dinner.defaultStart} - {SHIFTS.dinner.defaultEnd})
                   </Select.Item>
                 </Select.Group>
               </Select.Content>

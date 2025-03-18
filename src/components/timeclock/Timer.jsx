@@ -1,25 +1,32 @@
 import { useState, useEffect } from 'react'
 import { Text } from '@radix-ui/themes'
 import useThemeStore from '../../stores/themeStore'
-import { formatDuration } from '../../utils/timeUtils'
+
+function formatDuration(seconds) {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  return [hours, minutes, secs]
+    .map(v => v.toString().padStart(2, '0'))
+    .join(':')
+}
 
 export function Timer({ startTime, expectedDuration }) {
   const [elapsed, setElapsed] = useState(0)
   const isDark = useThemeStore((state) => state.isDark)
 
   useEffect(() => {
-    // Load from localStorage on mount
-    const storedElapsed = localStorage.getItem('timerElapsed')
-    if (storedElapsed) {
-      setElapsed(parseInt(storedElapsed, 10))
-    } else {
-      setElapsed(Math.floor((Date.now() - startTime.getTime()) / 1000))
+    const calculateElapsed = () => {
+      return Math.floor((Date.now() - startTime.getTime()) / 1000)
     }
 
+    // Initial calculation
+    setElapsed(calculateElapsed())
+
+    // Update every second
     const interval = setInterval(() => {
-      const newElapsed = Math.floor((Date.now() - startTime.getTime()) / 1000)
-      setElapsed(newElapsed)
-      localStorage.setItem('timerElapsed', newElapsed.toString())
+      setElapsed(calculateElapsed())
     }, 1000)
 
     return () => clearInterval(interval)
