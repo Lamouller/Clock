@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
 import { 
   Table, 
-  Button, 
-  Dialog, 
-  TextField, 
+  Button,
+  Dialog,
+  TextField,
   Select,
   Text,
-  IconButton,
   Card
 } from '@radix-ui/themes'
-import { supabase } from '../../lib/supabase'
+import { supabase, isAdmin } from '../../lib/supabase'
 import useThemeStore from '../../stores/themeStore'
 import { InviteDialog } from './InviteDialog'
 import { ActivateUserDialog } from './ActivateUserDialog'
@@ -29,6 +28,7 @@ const ROLES = {
   }
 }
 
+// Change to named export to match existing imports
 export function EmployeeManagement() {
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
@@ -129,18 +129,17 @@ export function EmployeeManagement() {
     try {
       setLoading(true)
 
-      // Update profile with user details
-      const { error: profileError } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
           status: 'active',
           first_name: userData.firstName,
           last_name: userData.lastName,
-          password: userData.password // This will be used for login
         })
-        .eq('id', activateUser.id)
+        .eq('id', userData.id)
+        .eq('status', 'invited')
 
-      if (profileError) throw profileError
+      if (updateError) throw updateError
 
       showNotification('User activated successfully')
       setActivateUser(null)

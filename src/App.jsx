@@ -7,26 +7,45 @@ import { ShiftManagement } from './components/shifts/ShiftManagement'
 import { Records } from './components/records/Records'
 import { Calendar } from './components/calendar/Calendar'
 import { Settings } from './components/settings/Settings'
+import { AuthTabs } from './components/auth/AuthTabs'
 import useAuthStore from './stores/authStore'
 import useThemeStore from './stores/themeStore'
+import { useEffect } from 'react'
 
 export function App() {
   const isDark = useThemeStore((state) => state.isDark)
-  const user = useAuthStore((state) => state.user)
+  const { user, loading, initialize } = useAuthStore()
+
+  useEffect(() => {
+    initialize()
+  }, [initialize])
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
     <Theme appearance={isDark ? 'dark' : 'light'} accentColor="blue">
       <BrowserRouter>
-        <Layout>
+        {user ? (
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/clock" element={<ClockInOut />} />
+              <Route path="/shifts" element={<ShiftManagement />} />
+              <Route path="/records" element={<Records />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+        ) : (
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/clock" element={<ClockInOut />} />
-            <Route path="/shifts" element={<ShiftManagement />} />
-            <Route path="/records" element={<Records />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/login" element={<AuthTabs />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-        </Layout>
+        )}
       </BrowserRouter>
     </Theme>
   )
